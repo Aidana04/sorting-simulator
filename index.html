@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сұрыптау алгоритмдерінің симуляторы</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#18263d;--muted:#64748b;--blue:#245fbd;--line:#dce4ef}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+main{max-width:1000px;margin:28px auto;padding:0 16px}
+header{background:linear-gradient(120deg,#173b70,#2876bd);color:#fff;padding:28px;border-radius:18px;margin-bottom:18px}
+h1{font-size:clamp(24px,4vw,36px);margin:0 0 8px}header p{margin:0;opacity:.92}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin:14px 0;box-shadow:0 5px 18px #173b700c}
+h2{margin:0 0 16px;font-size:20px}label{display:block;font-weight:700;margin:0 0 8px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:#fff;color:var(--ink)}
+button{border:0;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff}
+button.secondary{background:#e9eff8;color:#1e3a5f}button:disabled{opacity:.42;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.note{font-size:13px;line-height:1.5;color:var(--muted);margin:8px 0 0}
+.array{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin:22px 0}
+.cell{min-width:60px;flex:1;max-width:105px;text-align:center;background:#eaf0f8;border:2px solid transparent;border-radius:12px;padding:12px 5px}
+.cell strong{display:block;font-size:27px;color:#244c77}.cell small{font-size:12px;color:var(--muted)}
+.cell.active{background:#fff0d5;border-color:#d97706}.cell.sorted{background:#dcfce7;border-color:#86d6a0}
+.meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.status{background:#f0f5fb;border-radius:12px;padding:15px;line-height:1.55;min-height:58px}
+footer{padding:22px 10px 30px;text-align:center;color:#64748b;font-size:14px;font-weight:700;letter-spacing:.3px}
+@media(max-width:650px){.controls{grid-template-columns:1fr}main{margin:14px auto}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Сұрыптау алгоритмдерінің симуляторы</h1><p>8-сынып · Bubble Sort және Selection Sort · Қадамдық визуализация</p></header>
+<section class="panel">
+<h2>Баптаулар</h2>
+<div class="controls">
+<div><label for="numbers">1. Массив элементтерін енгізіңіз</label>
+<input id="numbers" type="text" value="5, 3, 8, 1, 4" autocomplete="off">
+<p class="note">2–12 бүтін сан енгізіңіз. Сандарды үтір арқылы бөліңіз. Мысалы: 5, 3, 8, 1, 4</p></div>
+<div><label for="algorithm">2. Алгоритмді таңдаңыз</label>
+<select id="algorithm"><option value="bubble">Bubble Sort — көпіршік арқылы</option><option value="selection">Selection Sort — таңдау арқылы</option></select>
+<label for="order" style="margin-top:14px">3. Сұрыптау бағыты</label>
+<select id="order"><option value="asc">Өсу ретімен</option><option value="desc">Кему ретімен</option></select></div>
+</div>
+<div class="actions"><button id="start" type="button">Массивті жаңарту және бастау</button><button id="reset" class="secondary" type="button">Бастапқы күй</button></div>
+</section>
+<section class="panel">
+<div class="meta"><strong id="stepTitle">Бастапқы массив</strong><span id="counter">Қадам 0</span></div>
+<div class="array" id="array" aria-live="polite"></div>
+<div class="status" id="explanation">Бастапқы массив көрсетілген. «Келесі» батырмасын басып, сұрыптау қадамдарын бақылаңыз.</div>
+<div class="actions"><button id="back" class="secondary" type="button" disabled>← Артқа</button><button id="next" type="button">Келесі →</button><button id="last" class="secondary" type="button">Соңғы нәтижені көрсету</button></div>
+<p class="note">Сары түс — салыстырылатын немесе таңдалған элементтер. Жасыл түс — орны анықталған элементтер.</p>
+</section>
+<section class="panel"><h2>Алгоритм туралы</h2>
+<p id="description">Bubble Sort: көршілес элементтер салыстырылады. Реті дұрыс болмаса, орындары ауыстырылады.</p>
+<p class="note">Әр қадамда қандай элементтер салыстырылғанын және не себепті орын ауысқанын түсіндіріңіз.</p></section>
+</main>
+<footer>Create by Miss Aidana</footer>
+<script>
+"use strict";
+const el=id=>document.getElementById(id);
+let original=[5,3,8,1,4],steps=[],currentStep=0;
+function outOfOrder(x,y,order){return order==="asc"?x>y:x<y}
+function buildSteps(values,algorithm,order){
+ const a=values.slice(),n=a.length;
+ const result=[{values:a.slice(),active:[],sorted:[],message:"Бастапқы массив. «Келесі» батырмасын басып, сұрыптауды бастаңыз."}];
+ if(algorithm==="bubble"){
+  for(let i=0;i<n-1;i++)for(let j=0;j<n-1-i;j++){
+   const x=a[j],y=a[j+1];let message=x+" және "+y+" салыстырылады. ";
+   if(outOfOrder(x,y,order)){[a[j],a[j+1]]=[a[j+1],a[j]];message+="Реті дұрыс емес, орындары ауыстырылды."}
+   else message+="Реті дұрыс, орындары өзгермейді.";
+   const sorted=[];for(let k=n-i;k<n;k++)sorted.push(k);
+   result.push({values:a.slice(),active:[j,j+1],sorted,message});
+  }
+ }else{
+  for(let i=0;i<n-1;i++){
+   let k=i;for(let j=i+1;j<n;j++)if(order==="asc"?a[j]<a[k]:a[j]>a[k])k=j;
+   const chosen=a[k],first=a[i];let message="Сұрыпталмаған бөліктен "+(order==="asc"?"ең кіші":"ең үлкен")+" элемент ізделді. Таңдалған мән: "+chosen+". ";
+   if(k!==i){[a[i],a[k]]=[a[k],a[i]];message+=chosen+" және "+first+" орын алмастырды."}
+   else message+="Таңдалған элемент өз орнында қалды.";
+   const sorted=[];for(let q=0;q<=i;q++)sorted.push(q);
+   result.push({values:a.slice(),active:[i,k],sorted,message});
+  }
+ }
+ result.push({values:a.slice(),active:[],sorted:Array.from({length:n},(_,i)=>i),message:"Сұрыптау аяқталды! Массив толық реттелді."});
+ return result;
+}
+function render(){
+ const s=steps[currentStep],box=el("array");box.replaceChildren();
+ s.values.forEach((v,i)=>{
+  const cell=document.createElement("div");cell.className="cell";
+  if(s.active.includes(i))cell.classList.add("active");
+  if(s.sorted.includes(i))cell.classList.add("sorted");
+  const num=document.createElement("strong");num.textContent=String(v);
+  const pos=document.createElement("small");pos.textContent="Индекс: "+i;
+  cell.append(num,pos);box.appendChild(cell);
+ });
+ el("stepTitle").textContent=currentStep===0?"Бастапқы массив":currentStep===steps.length-1?"Соңғы нәтиже":"Орындалу қадамы "+currentStep;
+ el("counter").textContent="Қадам "+currentStep+" / "+(steps.length-1);
+ el("explanation").textContent=s.message;
+ el("back").disabled=currentStep===0;el("next").disabled=currentStep===steps.length-1;
+ el("description").textContent=el("algorithm").value==="bubble"
+ ?"Bubble Sort: көршілес элементтер салыстырылады. Өсу реті үшін сол жақтағы сан үлкен болса, орындары ауысады; кему реті үшін керісінше."
+ :"Selection Sort: сұрыпталмаған бөліктен ең кіші (өсу реті) немесе ең үлкен (кему реті) элемент таңдалып, ағымдағы орынға қойылады.";
+}
+function initialize(){
+ const parts=el("numbers").value.split(",").map(x=>x.trim()),values=parts.map(Number);
+ if(parts.length<2||parts.length>12||parts.some(x=>x==="")||values.some(x=>!Number.isFinite(x)||!Number.isInteger(x))){
+  alert("2–12 аралығында бүтін сандар енгізіңіз. Мысалы: 5, 3, 8, 1, 4");return;
+ }
+ original=values.slice();steps=buildSteps(original,el("algorithm").value,el("order").value);currentStep=0;render();
+}
+el("start").addEventListener("click",initialize);
+el("reset").addEventListener("click",()=>{steps=buildSteps(original,el("algorithm").value,el("order").value);currentStep=0;render()});
+el("algorithm").addEventListener("change",initialize);el("order").addEventListener("change",initialize);
+el("back").addEventListener("click",()=>{if(currentStep>0){currentStep--;render()}});
+el("next").addEventListener("click",()=>{if(currentStep<steps.length-1){currentStep++;render()}});
+el("last").addEventListener("click",()=>{currentStep=steps.length-1;render()});
+steps=buildSteps(original,"bubble","asc");render();
+</script>
+</body>
+</html>
